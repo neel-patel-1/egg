@@ -45,6 +45,7 @@ mod extract;
 mod language;
 #[cfg(feature = "lp")]
 mod lp_extract;
+mod good_lp_extract;
 mod machine;
 mod multipattern;
 mod pattern;
@@ -103,6 +104,7 @@ pub use {
     run::*,
     subst::{Subst, Var},
     util::*,
+    good_lp_extract::*
 };
 
 #[cfg(feature = "lp")]

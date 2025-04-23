@@ -26,7 +26,7 @@ thiserror = "1.0.31"
 
 # for the lp feature
 coin_cbc = {version = "0.1.6", optional = true}
-good_lp = "1.13.0"
+good_lp = { version = "*", features = ["clarabel"], default-features = false }
 
 # for the serde-1 feature
 serde = {version = "1.0.137", features = ["derive"], optional = true}

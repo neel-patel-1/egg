@@ -43,6 +43,14 @@ ordered-float = "3.0.0"
 # forces the use of indexmaps over hashmaps
 deterministic = []
 lp = ["coin_cbc"]
+clarabel = ["good_lp/clarabel"]
+cbc = ["good_lp/coin_cbc"]
+highs = ["good_lp/highs"]
+lp-solvers = ["good_lp/lp-solvers"]
+lpsolve = ["good_lp/lpsolve"]
+microlp = ["good_lp/microlp"]
+scip = ["good_lp/scip"]
+scip_bundled = ["good_lp/scip_bundled"]
 reports = ["serde-1", "serde_json"]
 serde-1 = [
   "serde",

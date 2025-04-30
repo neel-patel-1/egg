@@ -6,6 +6,7 @@ use good_lp::{
     default_solver,
     Solution,
     SolverModel,
+    Constraint,
     Expression
 };
 use std::collections::HashMap;
@@ -14,7 +15,11 @@ use smallvec::SmallVec;
 use crate::*;
 
 pub struct GoodLpExtractor<'a, L:Language, N:Analysis<L>> {
+    egraph: &'a EGraph<L, N>,
+    enode_vars: HashMap<(Id, usize), Variable>,
     vars: ProblemVariables,
+    constraints: Vec<Constraint>,
+    total_cost: Expression,
 }
 
 
@@ -80,11 +85,34 @@ where
             }
         }
         Self {
-            vars
+            egraph,
+            vars,
+            constraints,
+            total_cost,
+            enode_vars,
         }
     }
 
     pub fn solve(mut self, eclass: Id) -> (f64, RecExpr<L>) {
-        return (0.0, RecExpr::default());
+        let root_class_id = self.egraph.find(eclass);
+        println!("Num Classes: {} Root Class: {}", self.egraph.classes().len(), root_class_id);
+        let root_class = &self.egraph[root_class_id];
+        let root_vars = root_class
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(node_index, _)| self.enode_vars[&(root_class_id, node_index)].clone())
+            .collect::<Vec<_>>();
+
+       self.constraints.push(root_vars.iter().cloned().sum::<Expression>().eq(1));
+
+        println!("Root vars: {:?}", root_vars);
+        let solution = self.vars
+            .minimise(&self.total_cost)
+            .using(default_solver)
+            .with_all(self.constraints)
+            .solve()
+            .unwrap();
+        let obj_cost = solution.eval(&self.total_cost);
     }
 }

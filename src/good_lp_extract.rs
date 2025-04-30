@@ -114,5 +114,57 @@ where
             .solve()
             .unwrap();
         let obj_cost = solution.eval(&self.total_cost);
+        let mut cache = HashMap::<Id, Id>::new();
+        let mut rexpr = RecExpr::default();
+        build(
+            self.egraph,
+            &self.enode_vars,
+            &solution,
+            root_class_id,
+            &mut cache,
+            &mut rexpr,
+        );
+
+        (obj_cost, rexpr)
     }
+}
+
+fn build<L, N>(
+    egraph   : &EGraph<L, N>,
+    enode_vs : &HashMap<(Id, usize), Variable>,
+    sol      : &dyn Solution,
+    class_id : Id,
+    cache    : &mut HashMap<Id, Id>,
+    out_expr : &mut RecExpr<L>,
+) -> Id
+where
+    L: Language,
+    N: Analysis<L>,
+{
+    if let Some(&id) = cache.get(&class_id) {
+        return id;
+    }
+    // find the enode whose var == 1
+    let class = &egraph[class_id];
+    let (_, node) = class.nodes.iter().enumerate()
+        .find(|(i, _)| sol.value(enode_vs[&(class_id, *i)]) > 0.5)
+        .expect("no chosen node for e‑class");
+
+    // recursively build children
+    let new_children: SmallVec<[Id; 4]> = node
+        .children()
+        .iter()
+        .map(|c| build(egraph, enode_vs, sol, egraph.find(*c), cache, out_expr))
+        .collect();
+
+    // add new node with mapped children
+    let mut idx = 0usize;
+    let mapped = node.clone().map_children(|_| {
+        let id = new_children[idx];
+        idx += 1;
+        id
+    });
+    let new_id = out_expr.add(mapped);
+    cache.insert(class_id, new_id);
+    new_id
 }

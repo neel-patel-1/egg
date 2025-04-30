@@ -51,6 +51,7 @@ lpsolve = ["good_lp/lpsolve"]
 microlp = ["good_lp/microlp"]
 scip = ["good_lp/scip"]
 scip_bundled = ["good_lp/scip_bundled"]
+no_acyclic = []
 reports = ["serde-1", "serde_json"]
 serde-1 = [
   "serde",

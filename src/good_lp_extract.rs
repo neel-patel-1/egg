@@ -14,6 +14,9 @@ use smallvec::SmallVec;
 
 use crate::*;
 
+/// A structure to perform extraction using integer linear programming.
+/// This uses the [`good_lp`]() library.
+/// Any of its available solvers can be used by enabling one of the available features in the Cargo.toml.
 pub struct GoodLpExtractor<'a, L:Language, N:Analysis<L>> {
     egraph: &'a EGraph<L, N>,
     enode_vars: HashMap<(Id, usize), Variable>,
@@ -29,6 +32,8 @@ where
     N: Analysis<L>,
 {
 
+    /// Create a [`GoodLpExtractor`] and most of the variables and constraints for the ILP formulation of the extraction problem.
+    /// See those docs for details.
     pub fn new<CF>(egraph: &'a EGraph<L, N>, mut cost_function: CF) -> Self
     where
         CF: LpCostFunction<L, N>,
@@ -86,13 +91,14 @@ where
         }
         Self {
             egraph,
+            enode_vars,
             vars,
             constraints,
             total_cost,
-            enode_vars,
         }
     }
 
+    /// Add the root node selection constraint for the root provided, solve the ILP formulation of the extraction problem, build a recursive expression from the solution, and return the cost and expression.
     pub fn solve(mut self, eclass: Id) -> (f64, RecExpr<L>) {
         let root_class_id = self.egraph.find(eclass);
         println!("Num Classes: {} Root Class: {}", self.egraph.classes().len(), root_class_id);

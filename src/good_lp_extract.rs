@@ -3,7 +3,13 @@ use good_lp::{
     variable,
     Variable,
     ProblemVariables,
-    default_solver,
+    clarabel,
+    coin_cbc,
+    highs,
+    microlp,
+    lp_solve,
+    scip,
+    variable::UnsolvedProblem,
     Solution,
     SolverModel,
     Constraint,
@@ -101,7 +107,7 @@ where
     }
 
     /// Add the root node selection constraint for the root provided, solve the ILP formulation of the extraction problem, build a recursive expression from the solution, and return the cost and expression.
-    pub fn solve(mut self, eclass: Id) -> (f64, RecExpr<L>) {
+    pub fn solve(mut self, eclass: Id, solver_choice: String, timeout: u64) -> (f64, RecExpr<L>) {
         let root_class_id = self.egraph.find(eclass);
         println!("Num Classes: {} Root Class: {}", self.egraph.classes().len(), root_class_id);
         let root_class = &self.egraph[root_class_id];
@@ -115,27 +121,137 @@ where
        self.constraints.push(root_vars.iter().cloned().sum::<Expression>().eq(1));
 
         println!("Root vars: {:?}", root_vars);
-        let solution = self.vars
-            .minimise(&self.total_cost)
-            .using(default_solver)
-            .with_all(self.constraints)
-            .solve()
-            .unwrap();
-        let obj_cost = solution.eval(&self.total_cost);
-        let mut cache = HashMap::<Id, Id>::new();
-        let mut rexpr = RecExpr::default();
-        build(
-            self.egraph,
-            &self.enode_vars,
-            &solution,
-            root_class_id,
-            &mut cache,
-            &mut rexpr,
-        );
+        let problem: UnsolvedProblem = self.vars
+            .minimise(&self.total_cost);
 
-        (obj_cost, rexpr)
+        match solver_choice.as_str() {
+            "clarabel" => {
+                let solution = problem
+                    .using(clarabel)
+                    .with_all(self.constraints)
+                    .solve()
+                    .unwrap();
+                let obj_cost = solution.eval(&self.total_cost);
+                let mut cache = HashMap::<Id, Id>::new();
+                let mut rexpr = RecExpr::default();
+                build(
+                    self.egraph,
+                    &self.enode_vars,
+                    &solution,
+                    root_class_id,
+                    &mut cache,
+                    &mut rexpr,
+                );
+
+                (obj_cost, rexpr)
+            },
+            #[cfg(feature = "highs")]
+            "highs" => {
+                let solution = problem
+                    .using(highs)
+                    .with_time_limit(timeout as f64)
+                    .with_all(self.constraints)
+                    .solve()
+                    .unwrap();
+                let obj_cost = solution.eval(&self.total_cost);
+                let mut cache = HashMap::<Id, Id>::new();
+                let mut rexpr = RecExpr::default();
+                build(
+                    self.egraph,
+                    &self.enode_vars,
+                    &solution,
+                    root_class_id,
+                    &mut cache,
+                    &mut rexpr,
+                );
+
+                (obj_cost, rexpr)
+            },
+            #[cfg(feature = "cbc")]
+            "cbc" => {
+                let solution = problem
+                    .using(coin_cbc)
+                    .with_time_limit(timeout as f64)
+                    .with_all(self.constraints)
+                    .solve()
+                    .unwrap();
+                let obj_cost = solution.eval(&self.total_cost);
+                let mut cache = HashMap::<Id, Id>::new();
+                let mut rexpr = RecExpr::default();
+                build(
+                    self.egraph,
+                    &self.enode_vars,
+                    &solution,
+                    root_class_id,
+                    &mut cache,
+                    &mut rexpr,
+                );
+
+                (obj_cost, rexpr)
+            },
+            #[cfg(feature = "lpsolve")]
+            "lp_solve" => {
+                let solution = problem
+                    .using(lp_solve)
+                    .with_all(self.constraints)
+                    .solve()
+                    .unwrap();
+                let obj_cost = solution.eval(&self.total_cost);
+                let mut cache = HashMap::<Id, Id>::new();
+                let mut rexpr = RecExpr::default();
+                build(
+                    self.egraph,
+                    &self.enode_vars,
+                    &solution,
+                    root_class_id,
+                    &mut cache,
+                    &mut rexpr,
+                );
+                (obj_cost, rexpr)
+            },
+            #[cfg(feature = "microlp")]
+            "microlp" => {
+                let solution = problem
+                    .using(microlp)
+                    .with_all(self.constraints)
+                    .solve()
+                    .unwrap();
+                let obj_cost = solution.eval(&self.total_cost);
+                let mut cache = HashMap::<Id, Id>::new();
+                let mut rexpr = RecExpr::default();
+                build(
+                    self.egraph,
+                    &self.enode_vars,
+                    &solution,
+                    root_class_id,
+                    &mut cache,
+                    &mut rexpr,
+                );
+                (obj_cost, rexpr)
+            },
+            #[cfg(feature = "scip")]
+            "scip" => {
+                let solution = problem
+                    .using(scip)
+                    .with_all(self.constraints)
+                    .solve()
+                    .unwrap();
+                let obj_cost = solution.eval(&self.total_cost);
+                let mut cache = HashMap::<Id, Id>::new();
+                let mut rexpr = RecExpr::default();
+                build(
+                    self.egraph,
+                    &self.enode_vars,
+                    &solution,
+                    root_class_id,
+                    &mut cache,
+                    &mut rexpr,
+                );
+                (obj_cost, rexpr)
+            },
+            _ => panic!("Unsupported solver: {}", solver_choice),
+        }
     }
-    #[cfg(any(feature = "highs", feature = "cbc"))]
     /// Same as Solve, but with a timeout in seconds.
     pub fn solve_with_timeout(mut self, eclass: Id, seconds: f64) -> (f64, RecExpr<L>) {
         let root_class_id = self.egraph.find(eclass);
@@ -153,7 +269,7 @@ where
         println!("Root vars: {:?}", root_vars);
         let solution = self.vars
             .minimise(&self.total_cost)
-            .using(default_solver)
+            .using(coin_cbc)
             .with_time_limit(seconds)
             .with_all(self.constraints)
             .solve()

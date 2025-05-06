@@ -3,18 +3,24 @@ use good_lp::{
     variable,
     Variable,
     ProblemVariables,
-    clarabel,
-    coin_cbc,
-    highs,
-    microlp,
-    lp_solve,
-    scip,
     variable::UnsolvedProblem,
     Solution,
     SolverModel,
     Constraint,
     Expression
 };
+#[cfg(feature = "clarabel")]
+use good_lp::clarabel;
+#[cfg(feature = "cbc")]
+use good_lp::coin_cbc;
+#[cfg(feature = "highs")]
+use good_lp::highs as highs;
+#[cfg(feature = "microlp")]
+use good_lp::microlp;
+#[cfg(feature = "lpsolve")]
+use good_lp::lp_solve;
+#[cfg(feature = "scip")]
+use good_lp::scip;
 #[cfg(any(feature = "highs", feature = "cbc"))]
 use good_lp::WithTimeLimit;
 use std::collections::HashMap;
@@ -125,6 +131,7 @@ where
             .minimise(&self.total_cost);
 
         match solver_choice.as_str() {
+            #[cfg(feature = "clarabel")]
             "clarabel" => {
                 let solution = problem
                     .using(clarabel)

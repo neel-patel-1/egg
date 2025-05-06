@@ -17,7 +17,7 @@ use good_lp::coin_cbc;
 use good_lp::highs as highs;
 #[cfg(feature = "microlp")]
 use good_lp::microlp;
-#[cfg(feature = "lp_solve")]
+#[cfg(feature = "lpsolve")]
 use good_lp::lp_solve;
 #[cfg(feature = "scip")]
 use good_lp::scip;

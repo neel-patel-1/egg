@@ -18,6 +18,7 @@ use good_lp::{
 #[cfg(any(feature = "highs", feature = "cbc"))]
 use good_lp::WithTimeLimit;
 use std::collections::HashMap;
+use good_lp::variable::FormatWithVars;
 use smallvec::SmallVec;
 
 use crate::*;
@@ -119,10 +120,19 @@ where
             .collect::<Vec<_>>();
 
        self.constraints.push(root_vars.iter().cloned().sum::<Expression>().eq(1));
+       //println!("Constraints: {:?}", self.constraints);
 
-        println!("Root vars: {:?}", root_vars);
-        let problem: UnsolvedProblem = self.vars
-            .minimise(&self.total_cost);
+        println!("Root vars constraint: {:?}", self.constraints.last().unwrap());
+        println!("Root vars constraint: {:?}", root_vars.iter().cloned().sum::<Expression>().eq(1));
+        for (i, var) in root_vars.iter().enumerate() {
+            println!("Root var {}", self.vars.display(var));
+        }
+        // Extract display information for root variables before calling `minimise`
+        let root_var_displays: Vec<String> = root_vars
+            .iter()
+            .map(|var| self.vars.display(var).to_string())
+            .collect();
+        let problem: UnsolvedProblem = self.vars.minimise(&self.total_cost);
 
         match solver_choice.as_str() {
             "clarabel" => {
@@ -152,8 +162,19 @@ where
                     .with_time_limit(timeout as f64)
                     .with_all(self.constraints)
                     .solve()
-                    .unwrap();
+                    .expect("Failed to solve with highs");
                 let obj_cost = solution.eval(&self.total_cost);
+
+                println!("Root variables and their values:");
+                for (i, var) in root_vars.iter().enumerate() {
+                    println!(
+                        "Root var {}: {}, value: {}",
+                        i,
+                        root_var_displays[i],
+                        solution.value(*var)
+                    );
+                }
+
                 let mut cache = HashMap::<Id, Id>::new();
                 let mut rexpr = RecExpr::default();
                 build(
@@ -266,10 +287,8 @@ where
     L: Language,
     N: Analysis<L>,
 {
-    if let Some(&id) = cache.get(&class_id) {
-        return id;
-    }
     // find the enode whose var == 1
+    println!("Building for class_id: {}", class_id);
     let class = &egraph[class_id];
     let (_, node) = class.nodes.iter().enumerate()
         .find(|(i, _)| sol.value(enode_vs[&(class_id, *i)]) > 0.5)
@@ -285,11 +304,11 @@ where
     // add new node with mapped children
     let mut idx = 0usize;
     let mapped = node.clone().map_children(|_| {
+
         let id = new_children[idx];
         idx += 1;
         id
     });
     let new_id = out_expr.add(mapped);
-    cache.insert(class_id, new_id);
     new_id
 }

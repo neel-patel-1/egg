@@ -252,42 +252,6 @@ where
             _ => panic!("Unsupported solver: {}", solver_choice),
         }
     }
-    /// Same as Solve, but with a timeout in seconds.
-    pub fn solve_with_timeout(mut self, eclass: Id, seconds: f64) -> (f64, RecExpr<L>) {
-        let root_class_id = self.egraph.find(eclass);
-        println!("Num Classes: {} Root Class: {}", self.egraph.classes().len(), root_class_id);
-        let root_class = &self.egraph[root_class_id];
-        let root_vars = root_class
-            .nodes
-            .iter()
-            .enumerate()
-            .map(|(node_index, _)| self.enode_vars[&(root_class_id, node_index)].clone())
-            .collect::<Vec<_>>();
-
-       self.constraints.push(root_vars.iter().cloned().sum::<Expression>().eq(1));
-
-        println!("Root vars: {:?}", root_vars);
-        let solution = self.vars
-            .minimise(&self.total_cost)
-            .using(coin_cbc)
-            .with_time_limit(seconds)
-            .with_all(self.constraints)
-            .solve()
-            .unwrap();
-        let obj_cost = solution.eval(&self.total_cost);
-        let mut cache = HashMap::<Id, Id>::new();
-        let mut rexpr = RecExpr::default();
-        build(
-            self.egraph,
-            &self.enode_vars,
-            &solution,
-            root_class_id,
-            &mut cache,
-            &mut rexpr,
-        );
-
-        (obj_cost, rexpr)
-    }
 }
 
 fn build<L, N>(

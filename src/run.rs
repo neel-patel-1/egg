@@ -1,3 +1,4 @@
+use core::num;
 use std::fmt::{self, Debug, Formatter};
 
 use log::*;
@@ -859,6 +860,7 @@ impl BackoffScheduler {
         self.rule_stats(name.into()).ban_length = length;
         self
     }
+
 }
 
 impl Default for BackoffScheduler {
@@ -958,6 +960,23 @@ where
             stats.times_applied += 1;
             matches
         }
+    }
+    fn apply_rewrite(
+        &mut self,
+        iteration: usize,
+        egraph: &mut EGraph<L, N>,
+        rewrite: &Rewrite<L, N>,
+        matches: Vec<SearchMatches<L>>,
+    ) -> usize {
+        let applied_ids = rewrite.apply(egraph, &matches);
+        let num_applied = applied_ids.len();
+        if num_applied > 0 {
+            println!(
+                "Applied {} {} times",
+                rewrite.name, num_applied
+            );
+        }
+        num_applied
     }
 }
 
